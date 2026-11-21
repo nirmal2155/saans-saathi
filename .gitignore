@@ -1,0 +1,27 @@
+# Secrets & Local Environment
+.env
+.env.local
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+.coverage.*
+coverage/
+.ruff_cache/
+htmlcov/
+
+# Node & Frontend
+node_modules/
+.npm/
+.vitest/
+dist/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
