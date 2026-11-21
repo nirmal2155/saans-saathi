@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "echo 'Frontend ready'",
     "test": "vitest run",
     "test:watch": "vitest"
   },
