@@ -1,13 +1,16 @@
 """Vercel Serverless Entrypoint (Pure Python Standard Library).
 
-Zero external dependencies, zero binary C-extension issues, zero cold-start delay.
-Handles all /api/* routes: health, air, geocode, plan, summary.
+Handles both:
+- API routes: /api/health, /api/air, /api/geocode, /api/plan, /api/summary
+- Static fallback: /, /index.html, /js/*
+- Resolves original path from Vercel rewrite headers (x-matched-path, x-vercel-matched-path, etc.)
 """
 
 from __future__ import annotations
 
 import json
 import math
+import mimetypes
 import os
 import re
 import sys
@@ -20,8 +23,10 @@ from pathlib import Path
 
 # Add directory to sys.path so engine can be imported directly
 _this_dir = Path(__file__).resolve().parent
-if str(_this_dir) not in sys.path:
-    sys.path.insert(0, str(_this_dir))
+_root_dir = _this_dir.parent
+for _p in (str(_this_dir), str(_root_dir), "/var/task", "/var/task/api"):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 try:
     from . import engine
@@ -42,7 +47,6 @@ _hits: dict[str, deque[float]] = defaultdict(deque)
 _GEO_QUERY_RE = re.compile(r"^[\w\s\-,\.]{2,80}$", re.UNICODE)
 
 SECURITY_HEADERS = {
-    "Content-Type": "application/json; charset=utf-8",
     "Content-Security-Policy": (
         "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'"
     ),
@@ -144,17 +148,37 @@ def _ask_gemini(prompt: str) -> str:
     return str(data["candidates"][0]["content"]["parts"][0]["text"])[:1200]
 
 
+def _find_static_file(rel_path: str) -> Path | None:
+    rel_clean = rel_path.lstrip("/\\")
+    candidates = [
+        _root_dir / rel_clean,
+        _root_dir / "public" / rel_clean,
+        _root_dir / "frontend" / rel_clean,
+        Path("/var/task") / rel_clean,
+        Path("/var/task/public") / rel_clean,
+        Path("/var/task/frontend") / rel_clean,
+    ]
+    for c in candidates:
+        if c.is_file():
+            return c
+    return None
+
+
 class handler(BaseHTTPRequestHandler):
     """Standard Vercel serverless request handler."""
 
-    def _send_json(self, status: int, data: object) -> None:
-        body = json.dumps(data, ensure_ascii=False).encode("utf-8")
+    def _send_bytes(self, status: int, content_type: str, body: bytes) -> None:
         self.send_response(status)
         for h, v in SECURITY_HEADERS.items():
             self.send_header(h, v)
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _send_json(self, status: int, data: object) -> None:
+        body = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        self._send_bytes(status, "application/json; charset=utf-8", body)
 
     def _client_ip(self) -> str:
         fwd = self.headers.get("x-forwarded-for")
@@ -162,20 +186,56 @@ class handler(BaseHTTPRequestHandler):
             return fwd.split(",")[0].strip()
         return self.client_address[0] if self.client_address else "unknown"
 
+    def _resolve_target_path(self) -> tuple[str, dict[str, list[str]]]:
+        # Vercel rewrites often set x-matched-path or x-vercel-matched-path
+        matched = (
+            self.headers.get("x-matched-path")
+            or self.headers.get("x-vercel-matched-path")
+            or self.headers.get("x-invoke-path")
+            or self.headers.get("x-forwarded-uri")
+            or self.path
+        )
+        parsed = urllib.parse.urlsplit(matched)
+        path = parsed.path.rstrip("/")
+        # Also parse query from original path if empty in matched
+        orig_parsed = urllib.parse.urlsplit(self.path)
+        query = urllib.parse.parse_qs(parsed.query or orig_parsed.query)
+
+        # If matched is literally /api/index.py, look at query param or path
+        if path in ("/api/index.py", "/api/index"):
+            path = orig_parsed.path.rstrip("/")
+
+        return path, query
+
     def do_GET(self) -> None:
         if not _check_rate_limit(self._client_ip()):
             self._send_json(429, {"detail": "Too many requests"})
             return
 
-        parsed = urllib.parse.urlsplit(self.path)
-        path = parsed.path.rstrip("/")
-        query = urllib.parse.parse_qs(parsed.query)
+        path, query = self._resolve_target_path()
 
-        if path in ("/api/health", "/health"):
+        # Static assets
+        if path in ("", "/", "/index.html"):
+            idx = _find_static_file("index.html")
+            if idx and idx.is_file():
+                self._send_bytes(200, "text/html; charset=utf-8", idx.read_bytes())
+                return
+
+        if path.startswith("/js/") or path.startswith("js/"):
+            js_file = _find_static_file(path)
+            if js_file and js_file.is_file():
+                self._send_bytes(
+                    200, "application/javascript; charset=utf-8", js_file.read_bytes()
+                )
+                return
+
+        # Health endpoint
+        if path in ("/api/health", "/health", "/api/index.py/api/health"):
             self._send_json(200, {"status": "ok"})
             return
 
-        if path == "/api/geocode":
+        # Geocode endpoint
+        if path in ("/api/geocode", "/geocode") or path.endswith("/geocode"):
             q_list = query.get("q", [])
             q = q_list[0].strip() if q_list else ""
             if len(q) < 2:
@@ -191,7 +251,8 @@ class handler(BaseHTTPRequestHandler):
                 self._send_json(502, {"detail": str(e)})
             return
 
-        if path == "/api/air":
+        # Air endpoint
+        if path in ("/api/air", "/air") or path.endswith("/air"):
             try:
                 lat = float(query.get("lat", [None])[0])
                 lon = float(query.get("lon", [None])[0])
@@ -217,6 +278,12 @@ class handler(BaseHTTPRequestHandler):
                 self._send_json(502, {"detail": str(e)})
             return
 
+        # Fallback to index.html for SPA routing
+        fallback_idx = _find_static_file("index.html")
+        if fallback_idx and fallback_idx.is_file():
+            self._send_bytes(200, "text/html; charset=utf-8", fallback_idx.read_bytes())
+            return
+
         self._send_json(404, {"detail": f"Not found: {path}"})
 
     def do_POST(self) -> None:
@@ -224,8 +291,7 @@ class handler(BaseHTTPRequestHandler):
             self._send_json(429, {"detail": "Too many requests"})
             return
 
-        parsed = urllib.parse.urlsplit(self.path)
-        path = parsed.path.rstrip("/")
+        path, _ = self._resolve_target_path()
 
         content_len = int(self.headers.get("content-length", 0))
         if content_len > 65536:
@@ -239,7 +305,7 @@ class handler(BaseHTTPRequestHandler):
             self._send_json(400, {"detail": "Invalid JSON body"})
             return
 
-        if path == "/api/plan":
+        if path in ("/api/plan", "/plan") or path.endswith("/plan"):
             pm25 = body.get("pm25")
             members = body.get("members")
             if not isinstance(pm25, (int, float)) or not (0 <= pm25 <= 500):
@@ -286,7 +352,7 @@ class handler(BaseHTTPRequestHandler):
             )
             return
 
-        if path == "/api/summary":
+        if path in ("/api/summary", "/summary") or path.endswith("/summary"):
             pm25 = body.get("pm25")
             question = str(body.get("question", ""))
             lang = body.get("lang", "en")
@@ -312,7 +378,9 @@ class handler(BaseHTTPRequestHandler):
                 ans = _ask_gemini(prompt)
                 self._send_json(200, {"text": ans, "source": "gemini"})
             except Exception:
-                self._send_json(200, {"text": _fallback_summary(float(pm25), lang), "source": "rules"})
+                self._send_json(
+                    200, {"text": _fallback_summary(float(pm25), lang), "source": "rules"}
+                )
             return
 
         self._send_json(404, {"detail": f"Not found: {path}"})
