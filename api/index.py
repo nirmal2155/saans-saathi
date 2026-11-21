@@ -187,7 +187,17 @@ class handler(BaseHTTPRequestHandler):
         return self.client_address[0] if self.client_address else "unknown"
 
     def _resolve_target_path(self) -> tuple[str, dict[str, list[str]]]:
-        # Vercel rewrites often set x-matched-path or x-vercel-matched-path
+        # Parse query from self.path first
+        orig_parsed = urllib.parse.urlsplit(self.path)
+        query = urllib.parse.parse_qs(orig_parsed.query)
+
+        # 1. Check if Vercel passed the subpath via rewrite query param (__route__ or match)
+        route_param = query.get("__route__", [""])[0] or query.get("match", [""])[0]
+        if route_param:
+            clean_sub = route_param.strip("/").split("?")[0]
+            return f"/api/{clean_sub}", query
+
+        # 2. Check headers that Vercel or proxies might provide
         matched = (
             self.headers.get("x-matched-path")
             or self.headers.get("x-vercel-matched-path")
@@ -197,11 +207,11 @@ class handler(BaseHTTPRequestHandler):
         )
         parsed = urllib.parse.urlsplit(matched)
         path = parsed.path.rstrip("/")
-        # Also parse query from original path if empty in matched
-        orig_parsed = urllib.parse.urlsplit(self.path)
-        query = urllib.parse.parse_qs(parsed.query or orig_parsed.query)
+        if parsed.query:
+            for k, v in urllib.parse.parse_qs(parsed.query).items():
+                if k not in query:
+                    query[k] = v
 
-        # If matched is literally /api/index.py, look at query param or path
         if path in ("/api/index.py", "/api/index"):
             path = orig_parsed.path.rstrip("/")
 
