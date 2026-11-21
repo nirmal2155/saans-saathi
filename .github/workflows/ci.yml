@@ -12,10 +12,14 @@ jobs:
       - name: Install Python Dependencies & Audit Tools
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt pip-audit
+          pip install -r requirements.txt -r requirements-dev.txt pip-audit mypy
+      - name: Static Formatting Check with Ruff
+        run: ruff format --check backend
       - name: Static Linting with Ruff
         run: ruff check backend
-      - name: Pytest with Branch Coverage
+      - name: Strict Type Checking with Mypy
+        run: mypy backend
+      - name: Pytest with Branch Coverage (>=95%)
         run: pytest --cov=app --cov-branch --cov-fail-under=95
       - name: Dependency Vulnerability Audit (pip-audit)
         run: pip-audit -r requirements.txt

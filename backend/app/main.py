@@ -1,4 +1,5 @@
 """FastAPI service: validation, rate limiting, security headers, cached air data, optional Gemini explanations."""
+
 from __future__ import annotations
 
 import os
@@ -59,15 +60,15 @@ async def guard(request: Request, call_next):  # rate limit + security headers
         return JSONResponse({"detail": "Too many requests"}, status_code=429)
     q.append(now)
     resp = await call_next(request)
-    resp.headers.update({
-        "Content-Security-Policy": (
-            "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'"
-        ),
-        "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "DENY",
-        "Referrer-Policy": "no-referrer",
-        "Strict-Transport-Security": "max-age=31536000",
-    })
+    resp.headers.update(
+        {
+            "Content-Security-Policy": ("default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'"),
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "Referrer-Policy": "no-referrer",
+            "Strict-Transport-Security": "max-age=31536000",
+        }
+    )
     return resp
 
 

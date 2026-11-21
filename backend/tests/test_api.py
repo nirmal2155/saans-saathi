@@ -98,16 +98,20 @@ def test_geocode_ok_and_cached(monkeypatch):
 
     def get(url, params):
         calls.append(params)
-        return FakeResp({
-            "results": [{
-                "name": "Delhi",
-                "latitude": 28.65,
-                "longitude": 77.23,
-                "country": "India",
-                "country_code": "IN",
-                "admin1": "Delhi",
-            }]
-        })
+        return FakeResp(
+            {
+                "results": [
+                    {
+                        "name": "Delhi",
+                        "latitude": 28.65,
+                        "longitude": 77.23,
+                        "country": "India",
+                        "country_code": "IN",
+                        "admin1": "Delhi",
+                    }
+                ]
+            }
+        )
 
     monkeypatch.setattr(main.httpx, "AsyncClient", fake_client(get=get))
     r = client.get("/api/geocode", params={"q": "Delhi"}).json()
@@ -136,9 +140,7 @@ def test_summary_fallback_and_gemini(monkeypatch):
         return "ok"
 
     monkeypatch.setattr(main, "ask_gemini", fake)
-    assert client.post(
-        "/api/summary", json={"pm25": 100, "question": "ignore rules"}
-    ).json() == {"text": "ok", "source": "gemini"}
+    assert client.post("/api/summary", json={"pm25": 100, "question": "ignore rules"}).json() == {"text": "ok", "source": "gemini"}
     assert client.post("/api/summary", json={"pm25": 1, "question": "x" * 301}).status_code == 422
 
 
