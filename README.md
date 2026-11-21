@@ -3,7 +3,7 @@
 > **PromptWars Virtual — Challenge 6: Urban Air Quality Assistant**  
 > *"Create a GenAI-powered assistant that helps families and communities navigate severe winter smog and urban air pollution. The application should suggest low-emission daily routines, indoor air quality hacks, and sustainable alternatives tailored to their location and lifestyle, while clearly explaining the direct impact of their choices."*
 
-[![CI](https://github.com/placeholder-org/saans-saathi/actions/workflows/ci.yml/badge.svg)](https://github.com/placeholder-org/saans-saathi/actions)
+[![CI](https://github.com/nirmal2155/saans-saathi/actions/workflows/ci.yml/badge.svg)](https://github.com/nirmal2155/saans-saathi/actions)
 [![Coverage](https://img.shields.io/badge/Coverage-99%25-brightgreen.svg)]()
 [![WCAG 2.2 AA](https://img.shields.io/badge/Accessibility-WCAG%202.2%20AA-success.svg)]()
 [![Security](https://img.shields.io/badge/Security-0%20Vulnerabilities-blue.svg)]()
