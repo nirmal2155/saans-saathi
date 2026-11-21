@@ -1,9 +1,10 @@
-"""FastAPI service for Vercel Serverless: validation, rate limiting, security headers, cached air data, optional Gemini explanations."""
+"""FastAPI service for Vercel Serverless & Local: validation, rate limiting, security headers, cached air data, optional Gemini explanations."""
 
 from __future__ import annotations
 
 import os
 import re
+import sys
 import time
 from collections import defaultdict, deque
 from pathlib import Path
@@ -15,10 +16,20 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+# Ensure all possible module paths are in sys.path for AWS Lambda / Vercel runtime
+_this_dir = Path(__file__).resolve().parent
+_root_dir = _this_dir.parent
+for _p in (str(_this_dir), str(_root_dir), str(_root_dir / "backend"), "/var/task", "/var/task/api"):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 try:
     from . import engine
-except (ImportError, ValueError):
-    import engine  # type: ignore[no-redef]
+except (ImportError, ModuleNotFoundError):
+    try:
+        import engine  # type: ignore[no-redef]
+    except (ImportError, ModuleNotFoundError):
+        from app import engine  # type: ignore[no-redef]
 
 OPEN_METEO = "https://air-quality-api.open-meteo.com/v1/air-quality"
 OPEN_METEO_GEO = "https://geocoding-api.open-meteo.com/v1/search"
@@ -219,8 +230,14 @@ async def summary(req: SummaryRequest) -> dict[str, str]:
         return {"text": fallback_summary(req.pm25, req.lang), "source": "rules"}
 
 
-# Only mount static files if running standalone locally, not on Vercel Edge
-if not os.environ.get("VERCEL"):
-    _static = Path(__file__).resolve().parent.parent / "frontend"
-    if _static.is_dir():
-        app.mount("/", StaticFiles(directory=_static, html=True), name="web")
+# Mount static frontend files if a static folder exists
+_static_candidates = [
+    _root_dir / "frontend",
+    _root_dir,
+    Path("/var/task/frontend"),
+    Path("/var/task"),
+]
+for _sc in _static_candidates:
+    if _sc.is_dir() and (_sc / "index.html").is_file():
+        app.mount("/", StaticFiles(directory=str(_sc), html=True), name="web")
+        break
