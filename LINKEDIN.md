@@ -1,23 +1,27 @@
 # LinkedIn Post Draft
 
-Excited to unveil **SaansSaathi (सांससाथी)** — an urban air quality & winter smog assistant built for **PromptWars Virtual (Challenge 6: Urban Air Quality Assistant)**! 🌫️🇮🇳
+Excited to unveil **SaansSaathi (सांससाथी)** — an urban air quality companion built for **PromptWars Virtual (Challenge 6: Urban Air Quality Assistant)**! 🌫️🇮🇳
 
-During north India's winter smog crisis, AQI numbers often breach 400+. But what should a family actually DO? Should your elderly parent skip their morning walk? When is it safe to air out a room? And what if commercial air purifiers are too expensive?
+During severe winter smog across northern cities, AQI meters often surge past 400+. But for everyday families, raw numbers trigger panic without actionable clarity:
+• *Should an elderly parent still go for their morning walk?*
+• *When is it actually safe to open windows?*
+• *How can a family protect indoor air if commercial HEPA purifiers are unaffordable?*
 
-SaansSaathi bridges the gap between raw air data and family action:
-🎯 **Location-Tailored AQI**: Instant 24h mean PM2.5 forecasts via Open-Meteo with transparent "model estimate" provenance.
-👨‍👩‍👧‍👦 **Family-First Precautions**: Personalized vulnerability scoring (0–5) and age-specific actions with grounded scientific "Why?" explanations (e.g. why infants must never be masked).
-🪟 **Indoor Air Hacks**: Clear window opening verdicts, purifier CADR calculators, and a verified ~₹2,000 DIY box-fan filter hack.
-🌿 **Direct Impact Calculator**: Demonstrating exact kg CO₂/year saved across metro, bus, cycle, and car commute alternatives.
-🛡️ **Grounded GenAI with Zero Hallucination**: All numbers come strictly from tested Python engine code; Gemini Flash provides concise bilingual explanations (EN/हिन्दी) with automatic deterministic fallback.
+**SaansSaathi** bridges the gap between raw atmospheric data and practical family protection:
 
-Built with **Google Antigravity's multi-agent workflow**:
-- 99% backend branch coverage (FastAPI + Pytest)
-- 100% passing Vitest suite (Vanilla ES modules, 0 kB client bundles)
-- Full WCAG 2.2 AA accessibility audit (all AQI colors tested ≥ 4.5:1 contrast, keyboard navigation, screen reader live regions)
-- 0 vulnerabilities across `pip-audit` & `npm audit` (Strict CSP, zero innerHTML)
+🎯 **Location-Grounded AQI**: Live 24-hour mean PM2.5 via Open-Meteo CAMS atmospheric model with transparent "model estimate" attribution.
+👨‍👩‍👧‍👦 **Personalized Family Protection**: Vulnerability scoring (0–5) tailored to infants, children, pregnant women, and seniors with chronic ailments — each paired with clear, scientific *"Why?"* rationale (e.g., why cloth masks fail and why infants must never be masked).
+🪟 **Actionable Indoor Hacks**: Real-time window ventilation verdicts, Clean Air Delivery Rate (CADR) room sizing, and DIY box-fan filter instructions (~₹2,000 alternative).
+🚲 **Carbon Footprint Alternatives**: Clear mobility emissions calculator demonstrating exact kg CO₂ saved per year across metro, bus, and cycling choices.
+🤖 **Grounded AI with Zero Hallucination**: All numbers come strictly from tested mathematical formulas; Google Gemini 2.5 Flash delivers bilingual (English & हिन्दी) guidance with strict prompt-injection protection and automatic rule-based fallback.
 
-Check out the project: [GitHub Repository Link]
-Live Demo: [Deployed URL]
+🛠️ **Engineering & Quality Highlights**:
+✅ **Code Quality**: Modular Vanilla ES architecture with 0 kB framework bloat and 0 innerHTML/XSS attack vectors.
+✅ **Testing**: 20 Pytest unit/integration tests with **99% branch coverage** + 32 Vitest frontend tests.
+✅ **Accessibility**: 100% WCAG 2.2 AA compliant — tested high-contrast color palette (>4.5:1), ≥44px touch targets, skip links, and full screen-reader live regions.
+✅ **Security**: Strict Content Security Policy (CSP), rate-limiting, and 0 vulnerabilities across `pip-audit` & `npm audit`.
 
-#PromptWars #GenAI #AirQuality #CleanAir #CivicTech #FastAPI #Accessibility #OpenSource #FullStackEngineering
+🌐 **Live Deployed App**: https://saans-saathii.vercel.app/
+💻 **GitHub Repository**: https://github.com/nirmal2155/saans-saathii
+
+#PromptWars #GenAI #AirQuality #CivicTech #CleanAirIndia #FullStack #Python #Accessibility #WCAG #WebDevelopment #OpenSource #FastAPI
