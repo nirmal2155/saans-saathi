@@ -62,7 +62,7 @@ async def guard(request: Request, call_next):  # rate limit + security headers
     resp = await call_next(request)
     resp.headers.update(
         {
-            "Content-Security-Policy": ("default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'"),
+            "Content-Security-Policy": ("default-src 'self'; style-src 'self'; script-src 'self'; frame-ancestors 'none'"),
             "X-Content-Type-Options": "nosniff",
             "X-Frame-Options": "DENY",
             "Referrer-Policy": "no-referrer",

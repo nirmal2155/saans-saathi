@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { T, t } from "../js/i18n.js";
+import { T, t } from "../../public/js/i18n.js";
 
 describe("i18n.js — Key Completeness & Translation Engine", () => {
   it("translates objects based on language code", () => {

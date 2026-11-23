@@ -1,0 +1,6 @@
+Contact: mailto:security@saans-saathi.dev
+Expires: 2027-12-31T23:59:59.000Z
+Preferred-Languages: en, hi
+Canonical: https://saans-saathii.vercel.app/.well-known/security.txt
+Policy: https://github.com/nirmal2155/saans-saathii/blob/main/SECURITY.md
+Acknowledgments: https://github.com/nirmal2155/saans-saathii/blob/main/SECURITY.md

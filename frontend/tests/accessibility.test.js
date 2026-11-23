@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { AQI_BANDS, getBandIndexByPm, estimateAqiFromPm, getBandIndexByCategory } from "../js/ui.js";
+import { AQI_BANDS, getBandIndexByPm, estimateAqiFromPm, getBandIndexByCategory } from "../../public/js/ui.js";
 
 /**
  * Calculates WCAG 2.2 relative luminance of an sRGB hex color.

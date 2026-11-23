@@ -1,12 +1,3 @@
-<!doctype html>
-<html lang="en" data-theme="auto">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>SaansSaathi — Urban Air Quality Assistant</title>
-<meta name="description" content="AI-assisted urban air quality companion for families navigating severe winter smog. Low-emission routines, indoor air hacks, and actionable alternatives.">
-<meta name="theme-color" content="#0b6b50">
-<style>
 /* ─── WCAG 2.2 AA Compliant Theme & Tokens ─────────────────────── */
 :root {
   --bg: #f5f8f6;
@@ -474,40 +465,3 @@ input[type="range"] {
     font-size: 1.25rem;
   }
 }
-</style>
-</head>
-<body>
-<a class="skip-link" href="#main-tabpanel">Skip to main content</a>
-
-<div class="app-shell">
-  <header class="app-header">
-    <div>
-      <h1 class="brand-title" id="app-title">SaansSaathi</h1>
-      <p class="brand-tagline" id="app-tagline">Family Smog Guardian</p>
-    </div>
-    <div class="header-actions">
-      <button id="theme-toggle-btn" type="button" aria-label="Toggle dark mode">🌙</button>
-      <button id="lang-toggle-btn" type="button" aria-label="Switch language">हिन्दी</button>
-    </div>
-  </header>
-
-  <!-- Location Search & Status Mount -->
-  <div id="location-mount"></div>
-
-  <!-- Accessible Tab Navigation Bar -->
-  <nav aria-label="Main Navigation">
-    <div role="tablist" class="tabs-wrap" id="main-tablist" aria-label="Application Sections"></div>
-  </nav>
-
-  <!-- Main Accessible Content Panel -->
-  <main id="main-tabpanel" role="tabpanel" tabindex="-1"></main>
-
-  <!-- Grounded Medical Disclaimer -->
-  <footer class="app-footer">
-    <p class="note" id="disclaimer-text"></p>
-  </footer>
-</div>
-
-<script type="module" src="/js/main.js"></script>
-</body>
-</html>

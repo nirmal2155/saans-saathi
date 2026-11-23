@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fetchAir, geocodeCity, fetchPlan, fetchSummary } from "../js/api.js";
+import { fetchAir, geocodeCity, fetchPlan, fetchSummary } from "../../public/js/api.js";
 
 describe("api.js — Network Client & Resilience", () => {
   beforeEach(() => {

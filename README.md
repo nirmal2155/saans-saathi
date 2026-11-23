@@ -3,7 +3,7 @@
 > **PromptWars Virtual — Challenge 6: Urban Air Quality Assistant**  
 > *"Create a GenAI-powered assistant that helps families and communities navigate severe winter smog and urban air pollution. The application should suggest low-emission daily routines, indoor air quality hacks, and sustainable alternatives tailored to their location and lifestyle, while clearly explaining the direct impact of their choices."*
 
-[![CI](https://github.com/nirmal2155/saans-saathi/actions/workflows/ci.yml/badge.svg)](https://github.com/nirmal2155/saans-saathi/actions)
+[![CI](https://github.com/nirmal2155/saans-saathii/actions/workflows/ci.yml/badge.svg)](https://github.com/nirmal2155/saans-saathii/actions)
 [![Coverage](https://img.shields.io/badge/Coverage-99%25-brightgreen.svg)]()
 [![WCAG 2.2 AA](https://img.shields.io/badge/Accessibility-WCAG%202.2%20AA-success.svg)]()
 [![Security](https://img.shields.io/badge/Security-0%20Vulnerabilities-blue.svg)]()
@@ -14,13 +14,13 @@
 
 | Official Problem Statement Requirement | Implementation in SaansSaathi | Verification & Location |
 |---|---|---|
-| **GenAI-Powered Assistant** | `POST /api/summary`: Gemini 2.5 Flash explains air quality in <80 words, grounded strictly in computed facts. Protected against prompt injection via `<USER_DATA>` delimiter. Instant deterministic rule-based fallback if offline or unkeyed. | `backend/app/main.py:175-188`<br>`frontend/js/ui.js` (Today Tab) |
-| **Location-Tailored Air Quality** | `GET /api/air?lat&lon`: Fetches 24h mean PM2.5 from Open-Meteo CAMS atmospheric model (10-min cache). City search via proxied `GET /api/geocode?q=...` + browser Geolocation. Clearly labeled as a **model estimate** (not a physical station). | `backend/app/main.py:82-124`<br>`frontend/js/api.js` |
-| **Families and Communities** | `POST /api/plan`: Computes vulnerability scores (0–5) and age/condition-tailored action plans for up to 8 family members (infants, elderly, pregnant, asthmatic, outdoor workers). Every action includes a collapsible **"Why?"** explanation. | `backend/app/engine.py:34-85`<br>`frontend/js/ui.js` (Family Tab) |
-| **Low-Emission Daily Routines** | Actionable daily routines (metro/bus transit shift, vehicle anti-idling at lights, RWA biomass burning reporting) with scientific reasoning on how each choice prevents ground-level winter smog. | `frontend/js/ui.js` (Today Tab)<br>`frontend/js/i18n.js` |
-| **Indoor Air Quality Hacks** | **Windows Verdict**: Based on CPCB AQI band (open vs. midday ventilation vs. draft sealing).<br>**Purifier CADR Calculator**: `Area × Height × 5 ACH` in m³/h and CFM.<br>**Affordable DIY Box-Fan Filter**: Step-by-step hack (~₹2,000 using MERV 13/HEPA filter taped to box fan).<br>**Cleaning Hack**: Wet mopping vs. dry sweeping. | `backend/app/engine.py:88-91`<br>`frontend/js/ui.js` (Indoor Tab) |
-| **Sustainable Alternatives & Direct Impact** | Interactive modal shift calculator comparing Petrol Car, Scooter/Bike, City Bus, Metro, and Cycle/Walk. Shows exact **kg CO₂/year saved** vs. petrol car, with all mathematical assumptions and IPCC/MoEFCC emission factors visible. | `backend/app/engine.py:93-96`<br>`frontend/js/ui.js` (Impact Tab) |
-| **Bilingual Accessibility (EN / हिन्दी)** | Complete 100% synchronized bilingual localization across all tabs, badges, alerts, and AI explanations. | `frontend/js/i18n.js`<br>`frontend/tests/i18n.test.js` |
+| **GenAI-Powered Assistant** | `POST /api/summary`: Gemini 2.5 Flash explains air quality in <80 words, grounded strictly in computed facts. Protected against prompt injection via `<USER_DATA>` delimiter. Instant deterministic rule-based fallback if offline or unkeyed. | `backend/app/main.py:175-188`<br>`public/js/ui.js` (Today Tab) |
+| **Location-Tailored Air Quality** | `GET /api/air?lat&lon`: Fetches 24h mean PM2.5 from Open-Meteo CAMS atmospheric model (10-min cache). City search via proxied `GET /api/geocode?q=...` + browser Geolocation. Clearly labeled as a **model estimate** (not a physical station). | `backend/app/main.py:82-124`<br>`public/js/api.js` |
+| **Families and Communities** | `POST /api/plan`: Computes vulnerability scores (0–5) and age/condition-tailored action plans for up to 8 family members (infants, elderly, pregnant, asthmatic, outdoor workers). Every action includes a collapsible **"Why?"** explanation. | `backend/app/engine.py:34-85`<br>`public/js/ui.js` (Family Tab) |
+| **Low-Emission Daily Routines** | Actionable daily routines (metro/bus transit shift, vehicle anti-idling at lights, RWA biomass burning reporting) with scientific reasoning on how each choice prevents ground-level winter smog. | `public/js/ui.js` (Today Tab)<br>`public/js/i18n.js` |
+| **Indoor Air Quality Hacks** | **Windows Verdict**: Based on CPCB AQI band (open vs. midday ventilation vs. draft sealing).<br>**Purifier CADR Calculator**: `Area × Height × 5 ACH` in m³/h and CFM.<br>**Affordable DIY Box-Fan Filter**: Step-by-step hack (~₹2,000 using MERV 13/HEPA filter taped to box fan).<br>**Cleaning Hack**: Wet mopping vs. dry sweeping. | `backend/app/engine.py:88-91`<br>`public/js/ui.js` (Indoor Tab) |
+| **Sustainable Alternatives & Direct Impact** | Interactive modal shift calculator comparing Petrol Car, Scooter/Bike, City Bus, Metro, and Cycle/Walk. Shows exact **kg CO₂/year saved** vs. petrol car, with all mathematical assumptions and IPCC/MoEFCC emission factors visible. | `backend/app/engine.py:93-96`<br>`public/js/ui.js` (Impact Tab) |
+| **Bilingual Accessibility (EN / हिन्दी)** | Complete 100% synchronized bilingual localization across all tabs, badges, alerts, and AI explanations. | `public/js/i18n.js`<br>`frontend/tests/i18n.test.js` |
 
 ---
 

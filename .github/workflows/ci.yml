@@ -14,9 +14,9 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt pip-audit mypy
       - name: Static Formatting Check with Ruff
-        run: ruff format --check backend
+        run: ruff format --check backend api
       - name: Static Linting with Ruff
-        run: ruff check backend
+        run: ruff check backend api
       - name: Strict Type Checking with Mypy
         run: mypy backend
       - name: Pytest with Branch Coverage (>=95%)

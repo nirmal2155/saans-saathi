@@ -1,20 +1,21 @@
 """Vercel Serverless Entrypoint (Pure Python Standard Library).
 
-Handles both:
+Production-grade, zero-dependency HTTP handler for Vercel Serverless Functions.
+Handles:
 - API routes: /api/health, /api/air, /api/geocode, /api/plan, /api/summary
-- Static fallback: /, /index.html, /js/*
-- Resolves original path from Vercel rewrite headers (x-matched-path, x-vercel-matched-path, etc.)
+- Static assets: /, /index.html, /css/*, /js/*, /robots.txt, /.well-known/security.txt
+- Strict Content Security Policy without 'unsafe-inline'
+- Accurate exception handling compliant with Ruff BLE001
 """
 
 from __future__ import annotations
 
 import json
-import math
-import mimetypes
 import os
 import re
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from collections import defaultdict, deque
@@ -30,7 +31,7 @@ for _p in (str(_this_dir), str(_root_dir), "/var/task", "/var/task/api"):
 
 try:
     from . import engine
-except Exception:
+except (ImportError, ModuleNotFoundError):
     import engine  # type: ignore[no-redef]
 
 OPEN_METEO = "https://air-quality-api.open-meteo.com/v1/air-quality"
@@ -41,15 +42,13 @@ GEO_CACHE_TTL = 3600
 RATE_LIMIT, RATE_WINDOW = 60, 60.0
 
 _cache: dict[tuple[float, float], tuple[float, float]] = {}
-_geo_cache: dict[str, tuple[float, list]] = {}
+_geo_cache: dict[str, tuple[float, list[dict]]] = {}
 _hits: dict[str, deque[float]] = defaultdict(deque)
 
 _GEO_QUERY_RE = re.compile(r"^[\w\s\-,\.]{2,80}$", re.UNICODE)
 
 SECURITY_HEADERS = {
-    "Content-Security-Policy": (
-        "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'"
-    ),
+    "Content-Security-Policy": ("default-src 'self'; style-src 'self'; script-src 'self'; frame-ancestors 'none'"),
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "no-referrer",
@@ -74,16 +73,13 @@ def _fetch_pm25(lat: float, lon: float) -> float:
     if hit and time.monotonic() - hit[0] < CACHE_TTL:
         return hit[1]
 
-    url = (
-        f"{OPEN_METEO}?latitude={key[0]}&longitude={key[1]}"
-        f"&hourly=pm2_5&past_hours=24&forecast_hours=1"
-    )
+    url = f"{OPEN_METEO}?latitude={key[0]}&longitude={key[1]}&hourly=pm2_5&past_hours=24&forecast_hours=1"
     req = urllib.request.Request(url, headers={"User-Agent": "SaansSaathi/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=8) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         vals = [v for v in data["hourly"]["pm2_5"] if v is not None]
-    except Exception as exc:
+    except (urllib.error.URLError, TimeoutError, KeyError, ValueError) as exc:
         raise RuntimeError("Air-quality data unavailable") from exc
 
     if len(vals) < 16:
@@ -99,9 +95,7 @@ def _fetch_geocode(query: str) -> list[dict]:
     if hit and time.monotonic() - hit[0] < GEO_CACHE_TTL:
         return hit[1]
 
-    params = urllib.parse.urlencode(
-        {"name": query, "count": 5, "language": "en", "format": "json"}
-    )
+    params = urllib.parse.urlencode({"name": query, "count": 5, "language": "en", "format": "json"})
     url = f"{OPEN_METEO_GEO}?{params}"
     req = urllib.request.Request(url, headers={"User-Agent": "SaansSaathi/1.0"})
     try:
@@ -118,7 +112,7 @@ def _fetch_geocode(query: str) -> list[dict]:
             }
             for item in data.get("results", [])
         ]
-    except Exception as exc:
+    except (urllib.error.URLError, TimeoutError, KeyError, ValueError) as exc:
         raise RuntimeError("Geocoding service unavailable") from exc
 
     _geo_cache[key] = (time.monotonic(), results)
@@ -143,20 +137,21 @@ def _ask_gemini(prompt: str) -> str:
         headers={"Content-Type": "application/json", "x-goog-api-key": key},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        data = json.loads(resp.read().decode("utf-8"))
-    return str(data["candidates"][0]["content"]["parts"][0]["text"])[:1200]
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        return str(data["candidates"][0]["content"]["parts"][0]["text"])[:1200]
+    except (urllib.error.URLError, TimeoutError, KeyError, IndexError, ValueError) as exc:
+        raise RuntimeError("Gemini API call failed") from exc
 
 
 def _find_static_file(rel_path: str) -> Path | None:
     rel_clean = rel_path.lstrip("/\\")
     candidates = [
-        _root_dir / rel_clean,
         _root_dir / "public" / rel_clean,
-        _root_dir / "frontend" / rel_clean,
-        Path("/var/task") / rel_clean,
+        _root_dir / rel_clean,
         Path("/var/task/public") / rel_clean,
-        Path("/var/task/frontend") / rel_clean,
+        Path("/var/task") / rel_clean,
     ]
     for c in candidates:
         if c.is_file():
@@ -187,17 +182,14 @@ class handler(BaseHTTPRequestHandler):
         return self.client_address[0] if self.client_address else "unknown"
 
     def _resolve_target_path(self) -> tuple[str, dict[str, list[str]]]:
-        # Parse query from self.path first
         orig_parsed = urllib.parse.urlsplit(self.path)
         query = urllib.parse.parse_qs(orig_parsed.query)
 
-        # 1. Check if Vercel passed the subpath via rewrite query param (__route__ or match)
         route_param = query.get("__route__", [""])[0] or query.get("match", [""])[0]
         if route_param:
             clean_sub = route_param.strip("/").split("?")[0]
             return f"/api/{clean_sub}", query
 
-        # 2. Check headers that Vercel or proxies might provide
         matched = (
             self.headers.get("x-matched-path")
             or self.headers.get("x-vercel-matched-path")
@@ -231,16 +223,32 @@ class handler(BaseHTTPRequestHandler):
                 self._send_bytes(200, "text/html; charset=utf-8", idx.read_bytes())
                 return
 
-        if path.startswith("/js/") or path.startswith("js/"):
+        if path.startswith(("/css/", "css/")):
+            css_file = _find_static_file(path)
+            if css_file and css_file.is_file():
+                self._send_bytes(200, "text/css; charset=utf-8", css_file.read_bytes())
+                return
+
+        if path.startswith(("/js/", "js/")):
             js_file = _find_static_file(path)
             if js_file and js_file.is_file():
-                self._send_bytes(
-                    200, "application/javascript; charset=utf-8", js_file.read_bytes()
-                )
+                self._send_bytes(200, "application/javascript; charset=utf-8", js_file.read_bytes())
+                return
+
+        if path == "/robots.txt":
+            rob = _find_static_file("robots.txt")
+            if rob and rob.is_file():
+                self._send_bytes(200, "text/plain; charset=utf-8", rob.read_bytes())
+                return
+
+        if path in ("/.well-known/security.txt", "/.well-known/security"):
+            sec = _find_static_file(".well-known/security.txt")
+            if sec and sec.is_file():
+                self._send_bytes(200, "text/plain; charset=utf-8", sec.read_bytes())
                 return
 
         # Health endpoint
-        if path in ("/api/health", "/health", "/api/index.py/api/health"):
+        if path in ("/api/health", "/health"):
             self._send_json(200, {"status": "ok"})
             return
 
@@ -257,7 +265,7 @@ class handler(BaseHTTPRequestHandler):
             try:
                 results = _fetch_geocode(q)
                 self._send_json(200, {"results": results})
-            except Exception as e:
+            except (RuntimeError, ValueError) as e:
                 self._send_json(502, {"detail": str(e)})
             return
 
@@ -284,7 +292,7 @@ class handler(BaseHTTPRequestHandler):
                         "source": "Open-Meteo CAMS model estimate",
                     },
                 )
-            except Exception as e:
+            except (RuntimeError, ValueError) as e:
                 self._send_json(502, {"detail": str(e)})
             return
 
@@ -311,7 +319,7 @@ class handler(BaseHTTPRequestHandler):
         try:
             raw_body = self.rfile.read(content_len).decode("utf-8")
             body = json.loads(raw_body) if raw_body else {}
-        except Exception:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             self._send_json(400, {"detail": "Invalid JSON body"})
             return
 
@@ -348,17 +356,14 @@ class handler(BaseHTTPRequestHandler):
             res_members = [
                 {
                     "name": m["name"],
-                    "risk": engine.risk_score(
-                        m["age"], m["has_condition"], m["pregnant"], m["hours_outside"], band
-                    ),
-                    "actions": engine.actions_for(
-                        m["age"], m["has_condition"], m["pregnant"], band
-                    ),
+                    "risk": engine.risk_score(m["age"], m["has_condition"], m["pregnant"], m["hours_outside"], band),
+                    "actions": engine.actions_for(m["age"], m["has_condition"], m["pregnant"], band),
                 }
                 for m in validated_members
             ]
             self._send_json(
-                200, {"aqi": value, "category": engine.CATEGORIES[band], "members": res_members}
+                200,
+                {"aqi": value, "category": engine.CATEGORIES[band], "members": res_members},
             )
             return
 
@@ -387,10 +392,8 @@ class handler(BaseHTTPRequestHandler):
             try:
                 ans = _ask_gemini(prompt)
                 self._send_json(200, {"text": ans, "source": "gemini"})
-            except Exception:
-                self._send_json(
-                    200, {"text": _fallback_summary(float(pm25), lang), "source": "rules"}
-                )
+            except (RuntimeError, ValueError):
+                self._send_json(200, {"text": _fallback_summary(float(pm25), lang), "source": "rules"})
             return
 
         self._send_json(404, {"detail": f"Not found: {path}"})

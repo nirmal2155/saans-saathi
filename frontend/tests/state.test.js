@@ -12,7 +12,7 @@ import {
   persistState,
   loadStoredState,
   STORAGE_KEY,
-} from "../js/state.js";
+} from "../../public/js/state.js";
 
 describe("state.js — Pure Logic & State Management", () => {
   beforeEach(() => {
