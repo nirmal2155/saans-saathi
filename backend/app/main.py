@@ -214,6 +214,6 @@ async def summary(req: SummaryRequest) -> dict[str, str]:
         return {"text": fallback_summary(req.pm25, req.lang), "source": "rules"}
 
 
-_static = Path(__file__).resolve().parents[2] / "frontend"
+_static = Path(__file__).resolve().parents[2] / "public"
 if _static.is_dir():
     app.mount("/", StaticFiles(directory=_static, html=True), name="web")

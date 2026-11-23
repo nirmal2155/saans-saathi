@@ -32,7 +32,7 @@ for _p in (str(_this_dir), str(_root_dir), "/var/task", "/var/task/api"):
 try:
     from . import engine
 except (ImportError, ModuleNotFoundError):
-    import engine  # type: ignore[no-redef]
+    import engine  # type: ignore[import-not-found,no-redef]
 
 OPEN_METEO = "https://air-quality-api.open-meteo.com/v1/air-quality"
 OPEN_METEO_GEO = "https://geocoding-api.open-meteo.com/v1/search"
@@ -272,8 +272,10 @@ class handler(BaseHTTPRequestHandler):
         # Air endpoint
         if path in ("/api/air", "/air") or path.endswith("/air"):
             try:
-                lat = float(query.get("lat", [None])[0])
-                lon = float(query.get("lon", [None])[0])
+                lat_str = query.get("lat", [""])[0]
+                lon_str = query.get("lon", [""])[0]
+                lat = float(lat_str)
+                lon = float(lon_str)
             except (TypeError, ValueError):
                 self._send_json(422, {"detail": "lat and lon must be numbers"})
                 return
@@ -355,9 +357,20 @@ class handler(BaseHTTPRequestHandler):
             value, band = engine.aqi_from_pm25(float(pm25))
             res_members = [
                 {
-                    "name": m["name"],
-                    "risk": engine.risk_score(m["age"], m["has_condition"], m["pregnant"], m["hours_outside"], band),
-                    "actions": engine.actions_for(m["age"], m["has_condition"], m["pregnant"], band),
+                    "name": str(m["name"]),
+                    "risk": engine.risk_score(
+                        int(str(m["age"])),
+                        bool(m["has_condition"]),
+                        bool(m["pregnant"]),
+                        float(str(m["hours_outside"])),
+                        band,
+                    ),
+                    "actions": engine.actions_for(
+                        int(str(m["age"])),
+                        bool(m["has_condition"]),
+                        bool(m["pregnant"]),
+                        band,
+                    ),
                 }
                 for m in validated_members
             ]
