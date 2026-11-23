@@ -1,5 +1,37 @@
+[project]
+name = "saans-saathi"
+version = "1.0.0"
+description = "Urban Air Quality & Smog Guardian Assistant"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Nirmal", email = "nirmal@example.com" }
+]
+keywords = ["air-quality", "cpcb", "naqi", "pm25", "smog", "health-guidance"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Healthcare Industry",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+]
+
 [tool.pytest.ini_options]
 pythonpath = ["backend"]
 testpaths = ["backend/tests"]
+
 [tool.ruff]
-line-length = 140
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "C4", "UP", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+mypy_path = ["backend"]
+warn_return_any = true
+warn_unused_configs = true

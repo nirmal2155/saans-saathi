@@ -32,26 +32,33 @@ app = FastAPI(title="SaansSaathi", docs_url="/api/docs", redoc_url=None)
 
 
 class Member(BaseModel):
-    name: str = Field("", max_length=24)
-    age: int = Field(30, ge=0, le=110)
-    has_condition: bool = False
-    pregnant: bool = False
-    hours_outside: float = Field(2, ge=0, le=16)
+    """Family member profile used for calculating personalized smog vulnerability."""
+
+    name: str = Field("", max_length=24, description="Name or role identifier")
+    age: int = Field(30, ge=0, le=110, description="Age in years")
+    has_condition: bool = Field(False, description="Whether person has asthma, COPD, or cardiac illness")
+    pregnant: bool = Field(False, description="Pregnancy status")
+    hours_outside: float = Field(2, ge=0, le=16, description="Planned daily outdoor hours")
 
 
 class PlanRequest(BaseModel):
-    pm25: float = Field(ge=0, le=500)
-    members: list[Member] = Field(min_length=1, max_length=8)
+    """Request payload containing PM2.5 level and family members."""
+
+    pm25: float = Field(ge=0, le=500, description="PM2.5 concentration in ug/m3")
+    members: list[Member] = Field(min_length=1, max_length=8, description="List of family members")
 
 
 class SummaryRequest(BaseModel):
-    pm25: float = Field(ge=0, le=500)
-    question: str = Field("", max_length=300)
-    lang: Literal["en", "hi"] = "en"
+    """Request payload for tailored advisory summary."""
+
+    pm25: float = Field(ge=0, le=500, description="PM2.5 concentration in ug/m3")
+    question: str = Field("", max_length=300, description="User's query")
+    lang: Literal["en", "hi"] = Field("en", description="Preferred output language")
 
 
 @app.middleware("http")
-async def guard(request: Request, call_next):  # rate limit + security headers
+async def guard(request: Request, call_next):
+    """HTTP middleware enforcing IP-based sliding window rate limits and strict security headers."""
     ip = request.client.host if request.client else "unknown"  # pragma: no cover
     now, q = time.monotonic(), _hits[ip]
     while q and now - q[0] > RATE_WINDOW:
@@ -62,7 +69,9 @@ async def guard(request: Request, call_next):  # rate limit + security headers
     resp = await call_next(request)
     resp.headers.update(
         {
-            "Content-Security-Policy": ("default-src 'self'; style-src 'self'; script-src 'self'; frame-ancestors 'none'"),
+            "Content-Security-Policy": (
+                "default-src 'self'; style-src 'self'; script-src 'self'; frame-ancestors 'none'"
+            ),
             "X-Content-Type-Options": "nosniff",
             "X-Frame-Options": "DENY",
             "Referrer-Policy": "no-referrer",
@@ -97,8 +106,8 @@ async def fetch_pm25(lat: float, lon: float) -> float:
     if len(vals) < 16:  # CPCB rule: at least 2/3 coverage
         raise HTTPException(502, "Not enough air-quality data")
     mean = sum(vals) / len(vals)
-    _cache[key] = (time.monotonic(), mean)
-    return mean
+    _cache[key] = (time.monotonic(), float(mean))
+    return float(mean)
 
 
 _GEO_QUERY_RE = re.compile(r"^[\w\s\-,\.]{2,80}$", re.UNICODE)
@@ -136,11 +145,20 @@ async def fetch_geocode(query: str) -> list[dict]:
 
 @app.get("/api/health")
 async def health() -> dict[str, str]:
+    """Health check endpoint verifying backend service availability and readiness."""
     return {"status": "ok"}
 
 
 @app.get("/api/geocode")
 async def geocode(q: str) -> dict[str, list]:
+    """Proxy city geocoding to Open-Meteo, with input sanitization and 1-hour caching.
+
+    Args:
+        q: City name query string (2-80 characters).
+
+    Returns:
+        JSON response with matching location candidates.
+    """
     q_clean = q.strip()
     if len(q_clean) < 2:
         raise HTTPException(422, "Query must be at least 2 characters")
@@ -152,6 +170,15 @@ async def geocode(q: str) -> dict[str, list]:
 
 @app.get("/api/air")
 async def air(lat: float, lon: float) -> dict[str, object]:
+    """Fetch 24-hour PM2.5 model data and compute Indian NAQI.
+
+    Args:
+        lat: Latitude coordinate (-90 to 90).
+        lon: Longitude coordinate (-180 to 180).
+
+    Returns:
+        Dictionary containing PM2.5, calculated AQI, category name, and data source.
+    """
     if not (-90 <= lat <= 90 and -180 <= lon <= 180):
         raise HTTPException(422, "Invalid coordinates")
     pm = await fetch_pm25(lat, lon)
@@ -166,6 +193,14 @@ async def air(lat: float, lon: float) -> dict[str, object]:
 
 @app.post("/api/plan")
 async def plan(req: PlanRequest) -> dict[str, object]:
+    """Calculate customized protective action plans and risk ratings for family members.
+
+    Args:
+        req: Validated PlanRequest containing current PM2.5 and family profiles.
+
+    Returns:
+        Personalized risk scores (1-5) and specific actionable steps for each member.
+    """
     value, band = engine.aqi_from_pm25(req.pm25)
     members = [
         {
@@ -179,6 +214,15 @@ async def plan(req: PlanRequest) -> dict[str, object]:
 
 
 def fallback_summary(pm25: float, lang: str) -> str:
+    """Generate deterministic bilingual fallback guidance when external LLM is offline.
+
+    Args:
+        pm25: PM2.5 concentration value.
+        lang: Language preference ('en' or 'hi').
+
+    Returns:
+        Concise advisory string.
+    """
     value, band = engine.aqi_from_pm25(pm25)
     if lang == "hi":
         return f"AQI {value} ({engine.CATEGORIES[band]}). परिवार के हर सदस्य के सुझाव ऊपर दिए गए हैं।"
@@ -186,6 +230,14 @@ def fallback_summary(pm25: float, lang: str) -> str:
 
 
 async def ask_gemini(prompt: str) -> str:
+    """Call Google Gemini Flash API with prompt injection barriers and timeout controls.
+
+    Args:
+        prompt: Formatted prompt enclosing user questions within XML delimiters.
+
+    Returns:
+        Generated advisory text.
+    """
     key = os.environ.get("GEMINI_API_KEY", "")
     if not key:
         raise RuntimeError("no key")
@@ -201,6 +253,14 @@ async def ask_gemini(prompt: str) -> str:
 
 @app.post("/api/summary")
 async def summary(req: SummaryRequest) -> dict[str, str]:
+    """Generate synthesized situational summary via Gemini with graceful rule fallback.
+
+    Args:
+        req: SummaryRequest with current PM2.5, optional user query, and language.
+
+    Returns:
+        Dictionary with advisory text and response origin ('gemini' or 'rules').
+    """
     value, band = engine.aqi_from_pm25(req.pm25)
     prompt = (
         f"You are a careful air-quality guide. Use ONLY these facts: AQI={value}, category={engine.CATEGORIES[band]}, "

@@ -5,7 +5,14 @@ from __future__ import annotations
 import math
 from typing import TypedDict
 
-BREAKPOINTS = ((0, 30, 0, 50), (30, 60, 51, 100), (60, 90, 101, 200), (90, 120, 201, 300), (120, 250, 301, 400), (250, 500, 401, 500))
+BREAKPOINTS = (
+    (0, 30, 0, 50),
+    (30, 60, 51, 100),
+    (60, 90, 101, 200),
+    (90, 120, 201, 300),
+    (120, 250, 301, 400),
+    (250, 500, 401, 500),
+)
 CATEGORIES = ("Good", "Satisfactory", "Moderate", "Poor", "Very Poor", "Severe")
 CO2_KG_PER_KM = {"car": 0.154, "bike": 0.051, "bus": 0.08, "metro": 0.03, "cycle": 0.0}
 
@@ -19,11 +26,28 @@ class Action(TypedDict):
 
 
 def clamp(v: float, lo: float, hi: float) -> float:
+    """Clamp a numerical value within the specified [lo, hi] bounds.
+
+    Args:
+        v: Input float value.
+        lo: Lower bound.
+        hi: Upper bound.
+
+    Returns:
+        Clamped float value.
+    """
     return max(lo, min(hi, v))
 
 
 def aqi_from_pm25(pm25: float) -> tuple[int, int]:
-    """India CPCB NAQI sub-index for PM2.5 (24h mean, ug/m3). Returns (aqi, band 0..5)."""
+    """Calculate India CPCB NAQI sub-index for PM2.5 (24h mean in ug/m3).
+
+    Args:
+        pm25: Measured or modeled PM2.5 concentration in ug/m3.
+
+    Returns:
+        A tuple of (aqi_value, band_index) where band_index is 0..5.
+    """
     pm = 0.0 if math.isnan(pm25) else clamp(float(pm25), 0.0, 500.0)
     for band, (lo, hi, a, b) in enumerate(BREAKPOINTS):
         if pm <= hi:
@@ -32,6 +56,21 @@ def aqi_from_pm25(pm25: float) -> tuple[int, int]:
 
 
 def risk_score(age: int, has_condition: bool, pregnant: bool, hours_outside: float, band: int) -> int:
+    """Determine personalized vulnerability risk level from 1 (lowest) to 5 (highest).
+
+    Considers physiological vulnerability (extremes of age, pregnancy, respiratory/cardiac
+    comorbidities) and exposure duration during elevated smog levels.
+
+    Args:
+        age: Age in years.
+        has_condition: Whether member has asthma, COPD, or cardiac illness.
+        pregnant: Pregnancy status.
+        hours_outside: Daily planned outdoor hours.
+        band: CPCB AQI band index (0=Good to 5=Severe).
+
+    Returns:
+        Vulnerability risk score capped at 5.
+    """
     score = band
     if age <= 5 or age >= 60:
         score += 1
@@ -45,10 +84,22 @@ def risk_score(age: int, has_condition: bool, pregnant: bool, hours_outside: flo
 
 
 def _a(code: str, en: str, hi: str, why_en: str, why_hi: str) -> Action:
+    """Construct a bilingual Action dictionary."""
     return {"code": code, "en": en, "hi": hi, "why_en": why_en, "why_hi": why_hi}
 
 
 def actions_for(age: int, has_condition: bool, pregnant: bool, band: int) -> list[Action]:
+    """Generate prioritized, actionable protective measures tailored to an individual.
+
+    Args:
+        age: Age in years.
+        has_condition: Comorbidity flag.
+        pregnant: Pregnancy flag.
+        band: CPCB AQI category band (0..5).
+
+    Returns:
+        List of Action dictionaries containing bilingual recommendations and rationales.
+    """
     out: list[Action] = []
     if band <= 1:
         out.append(
@@ -134,11 +185,32 @@ def actions_for(age: int, has_condition: bool, pregnant: bool, band: int) -> lis
 
 
 def purifier_cadr(area_m2: float, height_m: float) -> int:
-    """Clean-air delivery rate (m3/h) for 5 air changes per hour."""
+    """Calculate recommended clean-air delivery rate (CADR in m3/h) for 5 air changes per hour (ACH).
+
+    Args:
+        area_m2: Room floor area in square meters.
+        height_m: Room ceiling height in meters.
+
+    Returns:
+        Recommended CADR capacity in cubic meters per hour.
+    """
     return round(clamp(area_m2, 1, 500) * clamp(height_m, 2, 6) * 5)
 
 
 def yearly_co2_kg(mode: str, km_one_way: float, days_per_week: float) -> float:
+    """Estimate annual commuting carbon footprint based on transport mode and distance.
+
+    Args:
+        mode: Commuting mode (car, bike, bus, metro, cycle).
+        km_one_way: One-way commute distance in kilometers.
+        days_per_week: Number of commuting days per week.
+
+    Returns:
+        Annual emissions in kilograms of CO2 equivalent.
+
+    Raises:
+        ValueError: If an unsupported mode is provided.
+    """
     if mode not in CO2_KG_PER_KM:
         raise ValueError(f"unknown mode: {mode}")
     return CO2_KG_PER_KM[mode] * clamp(km_one_way, 0, 200) * 2 * clamp(days_per_week, 0, 7) * 52

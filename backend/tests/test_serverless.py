@@ -79,18 +79,18 @@ class TestServerlessEngine(unittest.TestCase):
 
         # 1. Direct path
         h1 = DummyHandler("/api/health")
-        p1, _ = index.handler._resolve_target_path(h1)
+        p1, _ = index.handler._resolve_target_path(h1)  # type: ignore[arg-type]
         self.assertEqual(p1, "/api/health")
 
         # 2. Vercel rewrite route param
         h2 = DummyHandler("/api/index.py?__route__=geocode&q=Delhi")
-        p2, q2 = index.handler._resolve_target_path(h2)
+        p2, q2 = index.handler._resolve_target_path(h2)  # type: ignore[arg-type]
         self.assertEqual(p2, "/api/geocode")
         self.assertEqual(q2.get("q"), ["Delhi"])
 
         # 3. Header matched path
         h3 = DummyHandler("/api/index.py", {"x-matched-path": "/api/air?lat=28.61&lon=77.23"})
-        p3, q3 = index.handler._resolve_target_path(h3)
+        p3, q3 = index.handler._resolve_target_path(h3)  # type: ignore[arg-type]
         self.assertEqual(p3, "/api/air")
         self.assertEqual(q3.get("lat"), ["28.61"])
 

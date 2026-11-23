@@ -25,12 +25,19 @@ from pathlib import Path
 # Add directory to sys.path so engine can be imported directly
 _this_dir = Path(__file__).resolve().parent
 _root_dir = _this_dir.parent
-for _p in (str(_this_dir), str(_root_dir), "/var/task", "/var/task/api"):
+for _p in (
+    str(_this_dir),
+    str(_root_dir),
+    str(_root_dir / "backend"),
+    "/var/task",
+    "/var/task/api",
+    "/var/task/backend",
+):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
 try:
-    from . import engine
+    from app import engine  # type: ignore[import-not-found]
 except (ImportError, ModuleNotFoundError):
     import engine  # type: ignore[import-not-found,no-redef]
 
@@ -85,8 +92,8 @@ def _fetch_pm25(lat: float, lon: float) -> float:
     if len(vals) < 16:
         raise RuntimeError("Not enough air-quality data")
     mean = sum(vals) / len(vals)
-    _cache[key] = (time.monotonic(), mean)
-    return mean
+    _cache[key] = (time.monotonic(), float(mean))
+    return float(mean)
 
 
 def _fetch_geocode(query: str) -> list[dict]:

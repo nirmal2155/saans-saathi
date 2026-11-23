@@ -2,7 +2,9 @@ import pytest
 from app import engine as e
 
 
-@pytest.mark.parametrize("pm,aqi,band", [(0, 0, 0), (30, 50, 0), (60, 100, 1), (90, 200, 2), (120, 300, 3), (250, 400, 4), (500, 500, 5)])
+@pytest.mark.parametrize(
+    "pm,aqi,band", [(0, 0, 0), (30, 50, 0), (60, 100, 1), (90, 200, 2), (120, 300, 3), (250, 400, 4), (500, 500, 5)]
+)
 def test_aqi_breakpoints(pm, aqi, band):
     assert e.aqi_from_pm25(pm) == (aqi, band)
 
