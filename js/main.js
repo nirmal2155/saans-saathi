@@ -397,5 +397,9 @@ export function initApp() {
 }
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
-  document.addEventListener("DOMContentLoaded", initApp);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initApp);
+  } else {
+    initApp();
+  }
 }
